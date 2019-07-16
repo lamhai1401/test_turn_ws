@@ -47,7 +47,7 @@ socket.onmessage = function (e) {
     let resp = JSON.parse(e.data)
     output.innerHTML += "Receive Server message \n. SDP: "  + resp.sdp + "\n. Type: " + resp.type;
 
-    pc.setRemoteDescription(resp)
+    pc.setRemoteDescription(new RTCSessionDescription(resp))
     .then(() => {
         console.log("Set remote by ws success")
     })
@@ -91,7 +91,7 @@ fetch('/getoffer', {
           document.getElementById('audio').srcObject = evt.streams[0];
     });
 
-    return pc.setRemoteDescription(offer)
+    return pc.setRemoteDescription(new RTCSessionDescription(offer))
     .then(() => pc.createAnswer())
     .then(answer => {
         return pc.setLocalDescription(answer)
