@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+<pre id="output"></pre>
+<button id="send" onclick="send()">Send</button>
+<script>
+    var output = document.getElementById("output");
+    var socket = new WebSocket("wss://localhost:8080/ws/broadcast");
+
+    socket.onopen = function () {
+		output.innerHTML += "Status: Connected\n";
+	};
+
+	socket.onmessage = function (e) {
+		let resp = JSON.parse(e.data)
+		output.innerHTML += "Server: " + resp.message + "id room " + resp.id + "\n";
+    };
+
+    let body = {
+		session: {
+			sdp: "sdp",
+			type: "type",
+		}
+    }
+    
+    function send() {
+		socket.send(JSON.stringify(body));
+	}
+</script>
+</body>
+</html>
