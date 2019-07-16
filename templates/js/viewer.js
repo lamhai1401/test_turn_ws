@@ -25,7 +25,7 @@ var iceConnectionLog = document.getElementById('ice-connection-state'),
     iceGatheringLog = document.getElementById('ice-gathering-state'),
     signalingLog = document.getElementById('signaling-state'),
     output = document.getElementById("output"),
-    socket = new WebSocket("wss://localhost:8080/ws/viewer");
+    socket = new WebSocket("wss://34.87.44.249:8080/ws/viewer");
 
 let log = msg => {
     document.getElementById('logs').innerHTML += msg + '<br>'
