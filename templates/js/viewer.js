@@ -25,7 +25,7 @@ var iceConnectionLog = document.getElementById('ice-connection-state'),
     iceGatheringLog = document.getElementById('ice-gathering-state'),
     signalingLog = document.getElementById('signaling-state'),
     output = document.getElementById("output"),
-    socket = new WebSocket("wss://34.87.44.249:8080/ws/viewer");
+    socket = new WebSocket("wss://localhost:8080/ws/viewer");
 
 let log = msg => {
     document.getElementById('logs').innerHTML += msg + '<br>'
@@ -98,6 +98,8 @@ fetch('/getoffer', {
     })
     .then(() => {
         answer = pc.localDescription
+        console.log("send init answer to socket")
+        socket.send(JSON.stringify(answer))
         console.log("client4 answer", answer.sdp)
         fetch('/sendanswer', {
             body: JSON.stringify({
@@ -109,8 +111,9 @@ fetch('/getoffer', {
             },
             method: 'POST'
         })
+        .then(resp => resp.json())
         .then(resp => {
-            console.log(resp.json())
+            console.log(resp)
         })
         .catch(err => log(err))
     })

@@ -24,7 +24,7 @@ var iceConnectionLog = document.getElementById('ice-connection-state'),
     iceGatheringLog = document.getElementById('ice-gathering-state'),
     signalingLog = document.getElementById('signaling-state'),
     output = document.getElementById("output"),
-    socket = new WebSocket("wss://34.87.44.249:8080/ws/broadcast");
+    socket = new WebSocket("wss://localhost:8080/ws/broadcast");
 
 let log = msg => {
     document.getElementById('logs').innerHTML += msg + '<br>'
@@ -50,6 +50,22 @@ pc.onicecandidate = event => {
     }
 }
 
+// register some listeners to help debugging
+pc.addEventListener('icegatheringstatechange', function () {
+    iceGatheringLog.textContent += ' -> ' + pc.iceGatheringState;
+}, false);
+iceGatheringLog.textContent = pc.iceGatheringState;
+
+pc.addEventListener('iceconnectionstatechange', function () {
+    iceConnectionLog.textContent += ' -> ' + pc.iceConnectionState;
+}, false);
+iceConnectionLog.textContent = pc.iceConnectionState;
+
+pc.addEventListener('signalingstatechange', function () {
+    signalingLog.textContent += ' -> ' + pc.signalingState;
+}, false);
+signalingLog.textContent = pc.signalingState;
+
 navigator.mediaDevices.getUserMedia({ video: true, audio: true })
 .then(stream => {
     pc.addStream(displayVideo(stream))
@@ -58,6 +74,8 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
 })
 .then(() => {
     d = pc.localDescription
+    console.log("send init offer to socket")
+    socket.send(JSON.stringify(d))
     return fetch('/sendoffer', {
         body: JSON.stringify({
             "sdp": d.sdp,
@@ -68,6 +86,9 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
         },
         method: 'POST'
     })
+
+    // add for socket here
+    
 })
 .then(resp => resp.json())
 .then(resp => console.log(resp))
