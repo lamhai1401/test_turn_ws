@@ -76,54 +76,9 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
     d = pc.localDescription
     console.log("send init offer to socket")
     socket.send(JSON.stringify(d))
-    return fetch('/sendoffer', {
-        body: JSON.stringify({
-            "sdp": d.sdp,
-            "type": d.type,
-        }),
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        method: 'POST'
-    })
 
-    // add for socket here
-    
 })
-.then(resp => resp.json())
-.then(resp => console.log(resp))
 .catch(log)
-
-function start() {
-    return fetch('/getanswer', {
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        method: 'GET'
-    })
-    .then(resp => resp.json())
-    .then(resp => {
-        // register some listeners to help debugging
-        pc.addEventListener('icegatheringstatechange', function () {
-            iceGatheringLog.textContent += ' -> ' + pc.iceGatheringState;
-        }, false);
-        iceGatheringLog.textContent = pc.iceGatheringState;
-
-        pc.addEventListener('iceconnectionstatechange', function () {
-            iceConnectionLog.textContent += ' -> ' + pc.iceConnectionState;
-        }, false);
-        iceConnectionLog.textContent = pc.iceConnectionState;
-
-        pc.addEventListener('signalingstatechange', function () {
-            signalingLog.textContent += ' -> ' + pc.signalingState;
-        }, false);
-        signalingLog.textContent = pc.signalingState;
-        answer = resp['answer']
-        console.log("client3 answer", answer.sdp)
-        return pc.setRemoteDescription(new RTCSessionDescription(answer))
-    })
-    .catch(err => alert(err))
-}
 
 socket.onopen = function () {
     output.innerHTML += "Status: Connected\n";
@@ -133,6 +88,8 @@ socket.onmessage = function (e) {
     let resp = JSON.parse(e.data)
     output.innerHTML += "Receive Server message \n. SDP: "  + resp.sdp + "\n. Type: " + resp.type;
 
+    console.log("On message resp \n")
+    console.log(resp.type)
     pc.setRemoteDescription(resp)
     .then(() => {
         console.log("Set remote by ws success")

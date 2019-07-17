@@ -7,15 +7,6 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var broadcastSDP = Session{}
-var viewerSDP = Session{}
-
-var broadcast = make(chan *WsMessage)
-var viewer = make(chan *WsMessage)
-
-var broadcastConn *websocket.Conn
-var viewerConn *websocket.Conn
-
 // Configure the upgrader
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
@@ -25,28 +16,35 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+var broadcast = make(chan *WsMessage)
+var viewer = make(chan *WsMessage)
+var wsList = make(map[string]*websocket.Conn)
+
 func handleBroadcast(w http.ResponseWriter, r *http.Request) {
 	// Upgrade initial GET request to a websocket
 	ws, err := upgrader.Upgrade(w, r, nil)
 
-	broadcastConn = ws
+	wsList["broadcast"] = ws
+
 	if err != nil {
 		fmt.Print(err)
 	}
 
-	defer func() {
-		ws.Close()
-	}()
+	defer ws.Close()
 
 	for {
-		if err := ws.ReadJSON(&broadcastSDP); err != nil {
+		msg := new(WsMessage)
+		session := new(Session)
+		if err := ws.ReadJSON(session); err != nil {
 			fmt.Printf("error: %v", err)
 			break
 		}
-		if viewerConn != nil {
-			msg := new(WsMessage)
-			msg.Session = broadcastSDP
-			msg.WS = viewerConn
+
+		conn, ok := wsList["viewer"]
+		if ok {
+			msg.Session = *session
+			msg.WS = conn
+			// Send the newly received message to the broadcast channel
 			broadcast <- msg
 		}
 	}
@@ -54,10 +52,10 @@ func handleBroadcast(w http.ResponseWriter, r *http.Request) {
 
 func viewerMessage() {
 	for {
-		ws := <-broadcast
-		if err := ws.WS.WriteJSON(ws.Session); err != nil {
+		msg := <-broadcast
+		if err := msg.WS.WriteJSON(msg.Session); err != nil {
 			fmt.Printf("error: %v", err)
-			continue
+			return
 		}
 	}
 }
@@ -65,30 +63,25 @@ func viewerMessage() {
 func handleViewer(w http.ResponseWriter, r *http.Request) {
 	// Upgrade initial GET request to a websocket
 	ws, err := upgrader.Upgrade(w, r, nil)
-
-	viewerConn = ws
+	wsList["viewer"] = ws
 	if err != nil {
 		fmt.Print(err)
 	}
 
-	defer func() {
-		ws.Close()
-	}()
-
-	msg1 := new(WsMessage)
-	msg1.Session = broadcastSDP
-	msg1.WS = ws
-	broadcast <- msg1
+	defer ws.Close()
 
 	for {
-		if err := ws.ReadJSON(&viewerSDP); err != nil {
+		msg := new(WsMessage)
+		session := new(Session)
+		if err := ws.ReadJSON(session); err != nil {
 			fmt.Printf("error: %v", err)
 			break
 		}
-		if broadcastConn != nil {
-			msg := new(WsMessage)
-			msg.Session = viewerSDP
-			msg.WS = broadcastConn
+		conn, ok := wsList["broadcast"]
+		if ok {
+			msg.Session = *session
+			msg.WS = conn
+			// Send the newly received message to the broadcast channel
 			viewer <- msg
 		}
 	}
@@ -96,10 +89,10 @@ func handleViewer(w http.ResponseWriter, r *http.Request) {
 
 func broadcastMessage() {
 	for {
-		ws := <-viewer
-		if err := ws.WS.WriteJSON(ws.Session); err != nil {
+		msg := <-viewer
+		if err := msg.WS.WriteJSON(msg.Session); err != nil {
 			fmt.Printf("error: %v", err)
-			continue
+			return
 		}
 	}
 }

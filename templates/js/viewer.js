@@ -39,6 +39,30 @@ pc.onicecandidate = event => {
     }
 }
 
+// register some listeners to help debugging
+pc.addEventListener('icegatheringstatechange', function () {
+    iceGatheringLog.textContent += ' -> ' + pc.iceGatheringState;
+}, false);
+iceGatheringLog.textContent = pc.iceGatheringState;
+
+pc.addEventListener('iceconnectionstatechange', function () {
+    iceConnectionLog.textContent += ' -> ' + pc.iceConnectionState;
+}, false);
+iceConnectionLog.textContent = pc.iceConnectionState;
+
+pc.addEventListener('signalingstatechange', function () {
+    signalingLog.textContent += ' -> ' + pc.signalingState;
+}, false);
+signalingLog.textContent = pc.signalingState;
+
+pc.addEventListener('track', function (evt) {
+    console.log("Track event: ", evt)
+    if (evt.track.kind == 'video')
+      document.getElementById('video').srcObject = evt.streams[0];
+    else
+      document.getElementById('audio').srcObject = evt.streams[0];
+});
+
 socket.onopen = function () {
     output.innerHTML += "Status: Connected\n";
 };
@@ -46,77 +70,17 @@ socket.onopen = function () {
 socket.onmessage = function (e) {
     let resp = JSON.parse(e.data)
     output.innerHTML += "Receive Server message \n. SDP: "  + resp.sdp + "\n. Type: " + resp.type;
-
-    pc.setRemoteDescription(new RTCSessionDescription(resp))
+    console.log("On message resp \n")
+    console.log(resp.type)
+    pc.setRemoteDescription(resp)
     .then(() => {
-        console.log("Set remote by ws success")
+        pc.createAnswer()
+        .then(answer => pc.setLocalDescription(answer))
+        .then(() =>{
+            console.log("Set local done send to ws")
+            socket.send(JSON.stringify(pc.localDescription))
+        })
     })
     .catch(log)
     // do something with new sdp here
 };
-
-fetch('/getoffer', {
-    headers: {
-        'Content-Type': 'application/json'
-    },
-    method: 'GET'
-})
-.then(resp => resp.json())
-.then(resp => {
-    offer = resp['offer']
-    console.log("offer", offer)
-
-    // register some listeners to help debugging
-    pc.addEventListener('icegatheringstatechange', function() {
-        iceGatheringLog.textContent += ' -> ' + pc.iceGatheringState;
-    }, false);
-    iceGatheringLog.textContent = pc.iceGatheringState;
-
-    pc.addEventListener('iceconnectionstatechange', function() {
-        iceConnectionLog.textContent += ' -> ' + pc.iceConnectionState;
-    }, false);
-    iceConnectionLog.textContent = pc.iceConnectionState;
-
-    pc.addEventListener('signalingstatechange', function() {
-        signalingLog.textContent += ' -> ' + pc.signalingState;
-    }, false);
-    signalingLog.textContent = pc.signalingState;
-
-     // connect audio / video
-    pc.addEventListener('track', function (evt) {
-        console.log("Track event: ", evt)
-        if (evt.track.kind == 'video')
-          document.getElementById('video').srcObject = evt.streams[0];
-        else
-          document.getElementById('audio').srcObject = evt.streams[0];
-    });
-
-    return pc.setRemoteDescription(new RTCSessionDescription(offer))
-    .then(() => pc.createAnswer())
-    .then(answer => {
-        return pc.setLocalDescription(answer)
-    })
-    .then(() => {
-        answer = pc.localDescription
-        console.log("send init answer to socket")
-        socket.send(JSON.stringify(answer))
-        console.log("client4 answer", answer.sdp)
-        fetch('/sendanswer', {
-            body: JSON.stringify({
-                "sdp": answer.sdp,
-                "type": answer.type,
-            }),
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            method: 'POST'
-        })
-        .then(resp => resp.json())
-        .then(resp => {
-            console.log(resp)
-        })
-        .catch(err => log(err))
-    })
-    .catch(err => log(err))
-})
-.catch(err => log(err))
