@@ -70,18 +70,15 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
 .then(stream => {
     pc.addStream(displayVideo(stream))
     return pc.createOffer()
-    .then(offer => pc.setLocalDescription(offer))
 })
-.then(() => {
-    d = pc.localDescription
-    console.log("send init offer to socket")
-    socket.send(JSON.stringify(d))
-
-})
+.then(offer => pc.setLocalDescription(offer))
 .catch(log)
 
 socket.onopen = function () {
     output.innerHTML += "Status: Connected\n";
+    d = pc.localDescription
+    console.log("send init offer to socket")
+    socket.send(JSON.stringify(d))
 };
 
 socket.onmessage = function (e) {
@@ -95,5 +92,5 @@ socket.onmessage = function (e) {
         console.log("Set remote by ws success")
     })
     .catch(log)
-    // do something with new sdp here
+    // do something with new sdp heres
 };
